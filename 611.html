@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>苔境 Taijing | 定制你的专属微景观</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->//画圆环图和雷达图
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500&display=swap');
+
+        :root {
+            --moss-dark: #1e3a29;
+            --moss-light: #4a7c59;
+            --stone-bg: #f5f5f0;
+            --accent-gold: #c5a065;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: var(--stone-bg);
+            color: #2d3436;
+        }
+
+        h1, h2, h3, .serif {
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #a8a8a8;
+            border-radius: 4px;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+
+        @keyframes grow {
+            from { transform: scale(0.95); opacity: 0.5; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .animate-grow {
+            animation: grow 0.4s ease-out forwards;
+        }
+
+        /* Chart Container Styling - MANDATORY */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        
+        /* Moss Texture Simulation Classes */
+        .texture-moss-1 {
+            background-color: #386641;
+            background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%236a994e' fill-opacity='0.4' fill-rule='evenodd'%3E%3Cpath d='M0 38.59l2.83-2.83 1.41 1.41L1.41 40H0v-1.41zM0 1.4l2.83 2.83 1.41-1.41L1.41 0H0v1.41zM38.59 40l-2.83-2.83 1.41-1.41L40 38.59V40h-1.41zM40 1.41l-2.83 2.83-1.41-1.41L38.59 0H40v1.41zM20 18.6l2.83-2.83 1.41 1.41L21.41 20H20v-1.41zM20 21.4l2.83 2.83-1.41-1.41L21.41 20H20v1.41z'/%3E%3C/g%3E%3C/svg%3E");
+        }
+        .texture-moss-2 {
+            background-color: #1e3a29;
+            background-image: radial-gradient(#4a7c59 1px, transparent 1px);
+            background-size: 10px 10px;
+        }
+        .texture-stone {
+            background-color: #7f8c8d;
+            background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2395a5a6' fill-opacity='0.4' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E");
+        }
+    </style>
+    <!-- Chosen Palette: Earthy Moss tones (Deep Green #1e3a29, Sage #4a7c59) with Stone Grey backgrounds and Gold accents for premium feel. -->
+    <!-- Application Structure Plan: Linear 4-Stage Process (Select -> Analyze -> Edit -> Export). Chosen for high-end customization to guide user through complexity. Dashboard elements integrated in Stage 2 & 3. -->
+    <!-- Visualization & Content Choices:
+        1. Material Analysis: Doughnut Chart to visualize the "Recipe" of the moss art (Greenery vs Hardscape).
+        2. Texture Density: Radar Chart to compare style attributes (Wildness, Density, Color pop).
+        3. Canvas Interaction: HTML5 Canvas for the "Graffiti" and drawing features required by user.
+        4. No SVG/Mermaid: All icons FontAwesome or CSS shapes.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used (except data URIs for CSS background patterns). NO Mermaid JS used. -->
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Navigation -->
+    <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-stone-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex-shrink-0 flex items-center cursor-pointer" onclick="app.reset()">
+                    <i class="fa-solid fa-seedling text-3xl text-emerald-800 mr-3"></i>
+                    <div>
+                        <span class="font-bold text-2xl tracking-widest text-emerald-900 serif">苔境</span>
+                        <span class="block text-xs text-stone-500 tracking-wider">TAIJING MOSS ART</span>
+                    </div>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <!-- Steps Indicator -->
+                    <div class="flex items-center space-x-2 text-sm font-medium">
+                        <span id="step-nav-1" class="text-emerald-800 border-b-2 border-emerald-800 pb-1">1. 风格选择</span>
+                        <i class="fa-solid fa-chevron-right text-stone-300 text-xs"></i>
+                        <span id="step-nav-2" class="text-stone-400 pb-1">2. 素材分析</span>
+                        <i class="fa-solid fa-chevron-right text-stone-300 text-xs"></i>
+                        <span id="step-nav-3" class="text-stone-400 pb-1">3. 创作工坊</span>
+                        <i class="fa-solid fa-chevron-right text-stone-300 text-xs"></i>
+                        <span id="step-nav-4" class="text-stone-400 pb-1">4. 交付</span>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <button class="p-2 rounded-full text-stone-500 hover:text-emerald-800 transition">
+                        <i class="fa-regular fa-user"></i>
+                    </button>
+                    <button class="ml-4 p-2 rounded-full text-stone-500 hover:text-emerald-800 transition">
+                        <i class="fa-solid fa-bag-shopping"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="app-container" class="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Views will be injected here by JS -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-stone-900 text-stone-400 py-8 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="serif italic text-lg mb-2">"让自然回归生活"</p>
+            <p class="text-xs tracking-wider opacity-60">© 2025 Taijing Moss Art Design. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Data & State ---
+        const MOSS_STYLES = [
+            {
+                id: 'zen',
+                name: '枯山水 • 禅意',
+                desc: '极简留白，以石为山，以苔为水。适合静思冥想空间。',
+                bgClass: 'bg-stone-100',
+                patternClass: 'texture-stone',
+                primaryColor: '#7f8c8d',
+                composition: { moss: 30, stone: 50, wood: 10, space: 10 },
+                attributes: [20, 40, 90, 30, 80] // [Density, Color, Calm, Wild, Texture]
+            },
+            {
+                id: 'forest',
+                name: '迷雾森林 • 深邃',
+                desc: '模拟原始森林地貌，层次丰富，充满生机。高密度植被覆盖。',
+                bgClass: 'bg-emerald-900',
+                patternClass: 'texture-moss-1',
+                primaryColor: '#1e3a29',
+                composition: { moss: 70, stone: 10, wood: 20, space: 0 },
+                attributes: [90, 80, 50, 90, 95]
+            },
+            {
+                id: 'modern',
+                name: '几何 • 现代',
+                desc: '将自然元素融入现代几何框架。线条利落，色彩鲜明。',
+                bgClass: 'bg-teal-700',
+                patternClass: 'texture-moss-2',
+                primaryColor: '#4a7c59',
+                composition: { moss: 50, stone: 0, wood: 20, space: 30 },
+                attributes: [60, 60, 40, 20, 50]
+            }
+        ];
+
+        const MATERIALS_DB = {
+            base: [
+                { id: 'sheet_moss', name: '大灰藓', type: 'moss', color: '#4a7c59' },
+                { id: 'mood_moss', name: '白发藓 (球苔)', type: 'moss', color: '#88a876' },
+                { id: 'reindeer_moss', name: '驯鹿苔', type: 'moss', color: '#cddc39' }
+            ],
+            decor: [
+                { id: 'fern', name: '永生蕨类', type: 'plant', icon: 'fa-leaf' },
+                { id: 'driftwood', name: '沉木枝', type: 'wood', icon: 'fa-tree' },
+                { id: 'seiryu', name: '青龙石', type: 'stone', icon: 'fa-cubes' },
+                { id: 'crystal', name: '水晶碎石', type: 'stone', icon: 'fa-gem' }
+            ]
+        };
+//状态管理
+        const appState = {
+            step: 1,
+            selectedStyle: null,
+            selectedMaterials: new Set(), // 选中的素材集合
+            canvasCtx: null,
+            isDrawing: false,
+            drawMode: 'brush', // brush, eraser
+            customPaths: [] // Store drawing paths
+        };
+
+        // --- Core Application Logic ---
+//应用对象结构 
+        const app = {
+            init: () => {
+                app.renderStep1();
+            },
+
+            reset: () => {
+                appState.step = 1;
+                appState.selectedStyle = null;
+                appState.selectedMaterials.clear();
+                appState.customPaths = [];
+                app.updateNav();
+                app.renderStep1();
+            },
+//
+            updateNav: () => {
+                const steps = [1, 2, 3, 4];
+                steps.forEach(s => {
+                    const el = document.getElementById(`step-nav-${s}`);
+                    if (s === appState.step) {
+                        el.className = 'text-emerald-800 border-b-2 border-emerald-800 pb-1 transition-all duration-300';
+                    } else if (s < appState.step) {
+                        el.className = 'text-emerald-600 pb-1 cursor-pointer transition-all duration-300';
+                        el.onclick = () => app.goToStep(s);
+                    } else {
+                        el.className = 'text-stone-300 pb-1 transition-all duration-300';
+                        el.onclick = null;
+                    }
+                });
+            },
+
+            goToStep: (step) => {
+                appState.step = step;
+                app.updateNav();
+                if (step === 1) app.renderStep1();
+                if (step === 2) app.renderStep2();
+                if (step === 3) app.renderStep3();
+                if (step === 4) app.renderStep4();
+            },
+//四个视图的渲染
+            // --- VIEW 1: Style Selection ---
+            renderStep1: () => {
+                const container = document.getElementById('app-container');
+                container.innerHTML = `
+                    <div class="text-center mb-12 animate-fade-in">
+                        //首页标题和描述
+                        <h2 class="text-3xl md:text-4xl font-bold text-emerald-950 mb-4 serif">选择您的自然意境</h2>
+                        <p class="text-stone-500 max-w-2xl mx-auto">每一款苔藓画都是一个微缩的自然世界。请选择您偏好的基础风格，我们将以此为基底进行定制。</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                        ${MOSS_STYLES.map(style => `
+                            <div onclick="app.selectStyle('${style.id}')" 
+                                 class="group relative h-96 rounded-2xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border-4 ${appState.selectedStyle?.id === style.id ? 'border-emerald-600' : 'border-transparent'}">
+                                
+                                <!-- Visual Representation (CSS Pattern) -->
+                                <div class="absolute inset-0 ${style.bgClass} ${style.patternClass} opacity-90 transition-transform duration-700 group-hover:scale-110"></div>
+                                <div class="absolute inset-0 bg-gradient-to-t from-stone-900 via-transparent to-transparent opacity-80"></div>
+                                
+                                <!-- Content -->
+                                <div class="absolute bottom-0 left-0 p-8 w-full text-white z-10">
+                                    <div class="flex justify-between items-end">
+                                        <div>
+                                            <h3 class="text-2xl font-bold serif mb-2 tracking-wide group-hover:text-emerald-300 transition-colors">${style.name}</h3>
+                                            <p class="text-sm text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-4 group-hover:translate-y-0">${style.desc}</p>
+                                        </div>
+                                        <div class="opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                            <i class="fa-solid fa-circle-check text-3xl text-emerald-400"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="flex justify-center mt-8">
+                        <button id="btn-step-1" onclick="app.confirmStyle()" disabled class="px-12 py-4 rounded-full bg-stone-300 text-stone-500 font-bold tracking-widest transition-all cursor-not-allowed">
+                            确认风格 <i class="fa-solid fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                `;
+            },
+
+            selectStyle: (id) => {
+                appState.selectedStyle = MOSS_STYLES.find(s => s.id === id);
+                app.renderStep1(); // Re-render to show selection
+                const btn = document.getElementById('btn-step-1');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.className = "px-12 py-4 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold tracking-widest shadow-lg transform hover:scale-105 transition-all";
+                }
+            },
+
+            confirmStyle: () => {
+                if (!appState.selectedStyle) return;
+                // Add default materials based on style
+                appState.selectedMaterials.clear();
+                if (appState.selectedStyle.id === 'forest') {
+                    appState.selectedMaterials.add('fern');
+                    appState.selectedMaterials.add('driftwood');
+                } else if (appState.selectedStyle.id === 'zen') {
+                    appState.selectedMaterials.add('seiryu');
+                }
+                app.goToStep(2);
+            },
+
+            // --- VIEW 2: Analysis & Material ---
+            renderStep2: () => {
+                const style = appState.selectedStyle;
+                const container = document.getElementById('app-container');
+                
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in h-full">
+                        <!-- Left: Visual & Charts -->
+                        <div class="lg:col-span-4 flex flex-col space-y-6">
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-stone-100">
+                                <h3 class="text-lg font-bold text-emerald-900 mb-4 serif border-b pb-2">AI 视觉分析报告</h3>
+                                <p class="text-sm text-stone-500 mb-6">系统已基于<span class="font-bold text-emerald-700">“${style.name}”</span>风格为您生成初始方案。以下是该风格的元素构成分析。</p>
+                                
+                                <div class="chart-container mb-6">
+                                    <canvas id="compositionChart"></canvas>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="attributeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Material Customization -->
+                        <div class="lg:col-span-8">
+                            <div class="bg-white p-8 rounded-2xl shadow-lg border border-stone-100 h-full flex flex-col">
+                                <div class="mb-6">
+                                    <h2 class="text-2xl font-bold text-emerald-900 serif">素材配置库</h2>
+                                    <p class="text-stone-500">点击下方素材卡片，定制您的微景观元素。</p>
+                                </div>
+
+                                <!-- Dynamic Material List -->
+                                <div class="space-y-8 flex-grow">
+                                    
+                                    <!-- Base Moss -->
+                                    <div>
+                                        <h4 class="text-sm font-bold text-stone-400 uppercase tracking-widest mb-3">基础底苔 (Essential)</h4>
+                                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                            ${MATERIALS_DB.base.map(m => `
+                                                <div class="p-3 rounded-xl border border-stone-200 bg-stone-50 flex items-center space-x-3 opacity-75 cursor-default">
+                                                    <div class="w-8 h-8 rounded-full" style="background-color: ${m.color}"></div>
+                                                    <span class="text-stone-700 font-medium">${m.name}</span>
+                                                    <i class="fa-solid fa-check text-emerald-500 ml-auto"></i>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+
+                                    <!-- Decor Items (Interactive) -->
+                                    <div>
+                                        <h4 class="text-sm font-bold text-stone-400 uppercase tracking-widest mb-3">装饰点缀 (Optional)</h4>
+                                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                            ${MATERIALS_DB.decor.map(m => {
+                                                const isSelected = appState.selectedMaterials.has(m.id);
+                                                return `
+                                                <div onclick="app.toggleMaterial('${m.id}')" 
+                                                     class="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 flex items-center justify-between
+                                                     ${isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-stone-200 hover:border-emerald-300 bg-white'}">
+                                                    <div class="flex items-center space-x-3">
+                                                        <div class="w-10 h-10 rounded-lg bg-stone-200 flex items-center justify-center text-stone-600">
+                                                            <i class="fa-solid ${m.icon}"></i>
+                                                        </div>
+                                                        <div class="flex flex-col">
+                                                            <span class="font-bold text-stone-800">${m.name}</span>
+                                                            <span class="text-xs text-stone-400">${isSelected ? '已加入' : '点击添加'}</span>
+                                                        </div>
+                                                    </div>
+                                                    ${isSelected ? '<i class="fa-solid fa-circle-plus text-emerald-600"></i>' : '<i class="fa-regular fa-circle text-stone-300"></i>'}
+                                                </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Action -->
+                                <div class="mt-8 pt-6 border-t border-stone-100 flex justify-between items-center">
+                                    <div class="text-sm text-stone-500">
+                                        已选择 <span class="font-bold text-emerald-700 text-lg">${appState.selectedMaterials.size}</span> 种额外装饰
+                                    </div>
+                                    <button onclick="app.generatePreview()" class="px-8 py-3 bg-emerald-800 text-white rounded-lg shadow-lg hover:bg-emerald-900 transition flex items-center">
+                                        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> 生成设计样图
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Render Charts after DOM injection
+                app.renderCharts(style);
+            },
+
+            toggleMaterial: (id) => {
+                if (appState.selectedMaterials.has(id)) {
+                    appState.selectedMaterials.delete(id);
+                } else {
+                    appState.selectedMaterials.add(id);
+                }
+                app.renderStep2(); // Re-render to update UI and Charts
+            },
+
+            renderCharts: (style) => {
+                // Adjust data based on selected materials
+                let comp = { ...style.composition };
+                if (appState.selectedMaterials.has('seiryu') || appState.selectedMaterials.has('crystal')) comp.stone += 15;
+                if (appState.selectedMaterials.has('driftwood')) comp.wood += 15;
+                if (appState.selectedMaterials.has('fern')) comp.moss -= 10; // Ferns take moss space
+
+                // Donut Chart: Material Composition
+                new Chart(document.getElementById('compositionChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['苔藓植被', '山石肌理', '枯木结构', '留白空间'],
+                        datasets: [{
+                            data: [comp.moss, comp.stone, comp.wood, comp.space],
+                            backgroundColor: ['#4a7c59', '#95a5a6', '#8d6e63', '#f5f5f0'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' }
+                        }
+                    }
+                });
+
+                // Radar Chart: Style Attributes
+                new Chart(document.getElementById('attributeChart'), {
+                    type: 'radar',
+                    data: {
+                        labels: ['植被密度', '色彩丰富度', '静谧感', '野性度', '纹理复杂度'],
+                        datasets: [{
+                            label: style.name,
+                            data: style.attributes,
+                            backgroundColor: 'rgba(74, 124, 89, 0.2)',
+                            borderColor: '#1e3a29',
+                            pointBackgroundColor: '#1e3a29',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { r: { suggestedMin: 0, suggestedMax: 100 } }
+                    }
+                });
+            },
+
+            generatePreview: () => {
+                // Simulate Loading/API Call
+                const btn = document.querySelector('button[onclick="app.generatePreview()"]');
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> AI 渲染中...';
+                btn.disabled = true;
+
+                setTimeout(() => {
+                    app.goToStep(3);
+                }, 1500);
+            },
+
+            // --- VIEW 3: Studio & Canvas ---
+            renderStep3: () => {
+                const container = document.getElementById('app-container');
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-140px)]">
+                        <!-- Toolbar -->
+                        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-4 flex flex-col space-y-4">
+                            <h3 class="font-bold text-emerald-900 border-b pb-2">创作工具</h3>
+                            
+                            <div class="space-y-2">
+                                <p class="text-xs text-stone-400 font-bold uppercase">调整参数</p>
+                                <div>
+                                    <label class="text-xs text-stone-600">植被密度</label>
+                                    <input type="range" class="w-full accent-emerald-600" oninput="app.redrawCanvas()">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-stone-600">光照强度</label>
+                                    <input type="range" class="w-full accent-emerald-600">
+                                </div>
+                            </div>
+
+                            <div class="space-y-2 pt-4 border-t border-stone-100">
+                                <p class="text-xs text-stone-400 font-bold uppercase">涂鸦标记 (Graffiti)</p>
+                                <button onclick="app.setTool('brush')" id="tool-brush" class="w-full text-left px-3 py-2 rounded bg-emerald-100 text-emerald-800 transition"><i class="fa-solid fa-pen mr-2"></i> 标记笔</button>
+                                <button onclick="app.setTool('eraser')" id="tool-eraser" class="w-full text-left px-3 py-2 rounded hover:bg-stone-100 text-stone-600 transition"><i class="fa-solid fa-eraser mr-2"></i> 橡皮擦</button>
+                                <button onclick="app.clearGraffiti()" class="w-full text-left px-3 py-2 rounded hover:bg-red-50 text-red-500 transition"><i class="fa-solid fa-trash mr-2"></i> 清除标记</button>
+                            </div>
+
+                            <div class="mt-auto">
+                                <button onclick="app.redrawCanvas()" class="w-full py-2 border border-emerald-600 text-emerald-600 rounded hover:bg-emerald-50 transition mb-2">
+                                    <i class="fa-solid fa-rotate mr-1"></i> 重新生成
+                                </button>
+                                <button onclick="app.goToStep(4)" class="w-full py-3 bg-emerald-800 text-white rounded shadow-lg hover:bg-emerald-900 transition">
+                                    <i class="fa-solid fa-check mr-1"></i> 确认定稿
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Main Canvas Area -->
+                        <div class="lg:col-span-10 bg-stone-200 rounded-xl relative overflow-hidden shadow-inner flex items-center justify-center">
+                            <!-- Canvas Layer -->
+                            <canvas id="artCanvas" class="bg-white shadow-2xl rounded-sm cursor-crosshair"></canvas>
+                            
+                            <!-- Help Toast -->
+                            <div class="absolute top-4 bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-sm text-sm text-stone-600 pointer-events-none">
+                                <i class="fa-solid fa-hand-pointer mr-2"></i> 在画板上绘制以标记修改意见
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                setTimeout(app.initCanvas, 100);
+            },
+
+            setTool: (tool) => {
+                appState.drawMode = tool;
+                document.getElementById('tool-brush').className = tool === 'brush' ? "w-full text-left px-3 py-2 rounded bg-emerald-100 text-emerald-800 transition" : "w-full text-left px-3 py-2 rounded hover:bg-stone-100 text-stone-600 transition";
+                document.getElementById('tool-eraser').className = tool === 'eraser' ? "w-full text-left px-3 py-2 rounded bg-emerald-100 text-emerald-800 transition" : "w-full text-left px-3 py-2 rounded hover:bg-stone-100 text-stone-600 transition";
+            },
+
+            initCanvas: () => {
+                const canvas = document.getElementById('artCanvas');
+                const parent = canvas.parentElement;
+                
+                // Set Canvas Size (Landscape 4:3ish)
+                canvas.width = parent.clientWidth * 0.9;
+                canvas.height = parent.clientHeight * 0.9;
+                
+                appState.canvasCtx = canvas.getContext('2d');
+                app.redrawCanvas();
+
+                // Event Listeners for Drawing
+                let isDrawing = false;
+
+                const startDraw = (e) => {
+                    isDrawing = true;
+                    draw(e);//立即画第一个点，应该是干扰绘画步骤的因素
+                };
+                const endDraw = () => {
+                    isDrawing = false;
+                    appState.canvasCtx.beginPath();
+                };
+                const draw = (e) => {
+                    if (!isDrawing) return;
+                    
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    const ctx = appState.canvasCtx;
+                    ctx.lineWidth = appState.drawMode === 'eraser' ? 20 : 3;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = appState.drawMode === 'eraser' ? 'rgba(255,255,255,1)' : '#ef4444'; // Red for markup
+                    
+                    if (appState.drawMode === 'eraser') {
+                    //橡皮擦了之后应该要保持图片内容不变，现在橡皮擦等于涂白色
+                         ctx.globalCompositeOperation = 'destination-out';
+                    } else {
+                         ctx.globalCompositeOperation = 'source-over';
+                    }
+                    //实际绘画（从前一个点到当前点）
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+
+                    // Save path roughly (simplified for demo)
+                    appState.customPaths.push({x, y, mode: appState.drawMode});
+                };
+
+                canvas.addEventListener('mousedown', startDraw);
+                canvas.addEventListener('mouseup', endDraw);
+                canvas.addEventListener('mousemove', draw);
+            },
+
+            redrawCanvas: () => {
+                const ctx = appState.canvasCtx;
+                const canvas = document.getElementById('artCanvas');
+                if (!ctx || !canvas) return;
+
+                // Clear
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = 'source-over';
+//下面这段不是基于生成的图片，等能成功调用API后需要替换
+                // 1. Draw Background (Based on Style)
+                const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                if (appState.selectedStyle.id === 'zen') {
+                    grad.addColorStop(0, '#e0e0e0');
+                    grad.addColorStop(1, '#bdbdbd');
+                } else {
+                    grad.addColorStop(0, '#2d3436');
+                    grad.addColorStop(1, '#1e272e');
+                }
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 2. Procedural Moss Generation (Circles for demo)
+                // Seed random based on style
+                const elements = 20;
+                for(let i=0; i<elements; i++) {
+                    ctx.beginPath();
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    const r = Math.random() * 50 + 20;
+                    
+                    ctx.arc(x, y, r, 0, Math.PI * 2);
+                    
+                    // Style specific colors
+                    if (appState.selectedStyle.id === 'forest') {
+                        ctx.fillStyle = Math.random() > 0.5 ? '#2e7d32' : '#1b5e20';
+                    } else if (appState.selectedStyle.id === 'zen') {
+                        ctx.fillStyle = Math.random() > 0.7 ? '#4a7c59' : '#9e9e9e'; // Moss patches on stone
+                    } else {
+                        ctx.fillStyle = '#26a69a'; // Geometric
+                    }
+                    ctx.fill();
+                }
+
+                // 3. Draw Added Materials (Icon representation)
+                appState.selectedMaterials.forEach(mat => {
+                    // Random placement for materials
+                    ctx.font = '30px FontAwesome';
+                    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                    const x = Math.random() * canvas.width * 0.8 + 50;
+                    const y = Math.random() * canvas.height * 0.8 + 50;
+                    // Note: Canvas text rendering for icons works if font loaded, otherwise might show box
+                    // For robustness in this demo, we draw simple shapes
+                    ctx.beginPath();
+                    ctx.rect(x, y, 20, 20);
+                    ctx.fillStyle = '#d4ac0d'; // Gold accent
+                    ctx.fill();
+                });
+            },
+
+            clearGraffiti: () => {
+                appState.customPaths = [];
+                app.redrawCanvas();
+            },
+
+            // --- VIEW 4: Export ---
+            renderStep4: () => {
+                const container = document.getElementById('app-container');
+                container.innerHTML = `
+                    <div class="max-w-3xl mx-auto animate-fade-in text-center pt-10">
+                        <div class="inline-block p-6 rounded-full bg-emerald-100 text-emerald-800 mb-6 text-4xl">
+                            <i class="fa-solid fa-cube"></i>
+                        </div>
+                        <h2 class="text-3xl font-bold text-stone-800 mb-4 serif">设计定稿已确认</h2>
+                        <p class="text-stone-500 mb-8">您的专属“${appState.selectedStyle.name}”方案已生成。正在转换为工程图纸和3D预览模型。</p>
+
+                        <div class="bg-white p-8 rounded-2xl shadow-lg text-left border border-stone-100 mb-8 relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-emerald-500 animate-pulse"></div>
+                            <h3 class="font-bold text-lg mb-4">订单明细</h3>
+                            <ul class="space-y-3 text-sm text-stone-600">
+                                <li class="flex justify-between border-b border-stone-100 pb-2">
+                                    <span>设计风格</span>
+                                    <span class="font-bold">${appState.selectedStyle.name}</span>
+                                </li>
+                                <li class="flex justify-between border-b border-stone-100 pb-2">
+                                    <span>包含素材</span>
+                                    <span class="text-right">
+                                        ${Array.from(appState.selectedMaterials).map(m => {
+                                            const item = [...MATERIALS_DB.base, ...MATERIALS_DB.decor].find(x => x.id === m);
+                                            return item ? item.name : m;
+                                        }).join(', ') || '标准配置'}
+                                    </span>
+                                </li>
+                                <li class="flex justify-between pt-2">
+                                    <span>工程文件格式</span>
+                                    <span>.OBJ / .CAD / .PDF</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="flex flex-col md:flex-row gap-4 justify-center">
+                            <button onclick="alert('正在下载工程包...')" class="px-8 py-3 bg-emerald-800 text-white rounded-lg shadow hover:bg-emerald-900 transition">
+                                <i class="fa-solid fa-download mr-2"></i> 导出 3D & 工程图
+                            </button>
+                            <button onclick="app.reset()" class="px-8 py-3 border border-stone-300 text-stone-600 rounded-lg hover:bg-stone-50 transition">
+                                <i class="fa-solid fa-house mr-2"></i> 返回首页
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        };
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+
+    </script>
+</body>
+</html>
